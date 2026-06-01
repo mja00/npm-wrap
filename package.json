@@ -1,0 +1,24 @@
+{
+  "name": "npm-wrap",
+  "version": "0.1.0",
+  "description": "Runs `npm install`, prompting `npm login` first only when the current npm token is missing or expired.",
+  "type": "module",
+  "bin": {
+    "npm-wrap": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}
