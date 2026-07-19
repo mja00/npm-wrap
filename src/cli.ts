@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync, type SpawnSyncOptions } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const TAG = "[npm-wrap]";
 
@@ -42,6 +43,18 @@ function parseArgs(argv: string[]): { forward: string[] } {
     forward.push(arg);
   }
   return { forward };
+}
+
+/**
+ * Prefer `npm ci` so installs come straight from the lockfile instead of
+ * re-resolving versions. It can't add packages or run without a lockfile,
+ * so fall back to `npm install` for those cases.
+ */
+function chooseInstall(forward: string[]): { cmd: "ci" | "install"; args: string[] } {
+  const hasLockfile = existsSync("package-lock.json") || existsSync("npm-shrinkwrap.json");
+  const addsPackages = forward.some((arg) => !arg.startsWith("-"));
+  if (hasLockfile && !addsPackages) return { cmd: "ci", args: ["ci", ...forward] };
+  return { cmd: "install", args: ["install", ...forward] };
 }
 
 function checkAuth(): AuthState {
@@ -98,8 +111,9 @@ function main(): void {
 
   if (isAgentEnvironment()) {
     console.error(`${TAG} non-interactive environment detected — skipping auth check`);
-    const code = runInherit(["install", ...forward]);
-    process.exit(code);
+    const { cmd, args } = chooseInstall(forward);
+    console.error(`${TAG} running \`npm ${cmd}\``);
+    process.exit(runInherit(args));
   }
 
   const auth = checkAuth();
@@ -122,8 +136,9 @@ function main(): void {
       break;
   }
 
-  const code = runInherit(["install", ...forward]);
-  process.exit(code);
+  const { cmd, args } = chooseInstall(forward);
+  console.error(`${TAG} running \`npm ${cmd}\``);
+  process.exit(runInherit(args));
 }
 
 main();

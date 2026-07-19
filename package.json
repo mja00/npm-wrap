@@ -1,7 +1,7 @@
 {
   "name": "npm-wrap",
   "version": "0.1.0",
-  "description": "Runs `npm install`, prompting `npm login` first only when the current npm token is missing or expired.",
+  "description": "Runs `npm ci` when a lockfile is present (else `npm install`), prompting `npm login` first only when the current npm token is missing or expired.",
   "type": "module",
   "bin": {
     "npm-wrap": "dist/cli.js"
