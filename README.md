@@ -4,6 +4,8 @@ A thin CLI wrapper around `npm install` that runs `npm login` first — but only
 
 If you're already authenticated, it just forwards straight to `npm install`. If the registry is unreachable (DNS failure, 5xx, etc.), it prints a warning and still proceeds to `npm install` rather than falsely prompting you to log in.
 
+In non-interactive environments (no TTY, CI, or an AI coding agent such as Claude Code or Cursor), the wrapper skips the auth check entirely and goes straight to `npm install`, because there is no terminal to drive an interactive `npm login`.
+
 ## Install
 
 ```sh
@@ -27,12 +29,23 @@ npm-wrap -- --foo --bar          # anything after `--` is forwarded verbatim
 
 On each invocation the wrapper:
 
-1. Runs `npm whoami` to probe the current token.
-2. Branches on the result:
+1. Checks whether it's running in a non-interactive environment (see below). If so, it prints a notice, skips straight to `npm install <your args>`, and exits.
+2. Otherwise, runs `npm whoami` to probe the current token.
+3. Branches on the result:
    - **Authenticated** — prints `[npm-wrap] authenticated as <user>` and continues.
-   - **Auth error** (`E401`, `ENEEDAUTH`, `EAUTHUNKNOWN`, `EAUTHIP`, or "Unauthorized") — runs `npm login` interactively, then continues. If login fails, the wrapper exits with the login's exit code.
+   - **Auth error** (`E401`, `ENEEDAUTH`, `EAUTHUNKNOWN`, `EAUTHIP`, or a message like "Unauthorized") — runs `npm login` interactively, then continues. If login fails, the wrapper exits with the login's exit code.
    - **Other error** (network, registry down) — warns and proceeds to `npm install` anyway, so an offline machine isn't forced through a pointless login prompt.
-3. Runs `npm install <your args>` with inherited stdio and exits with its exit code.
+4. Runs `npm install <your args>` with inherited stdio and exits with its exit code.
+
+## Non-interactive detection
+
+An interactive `npm login` is pointless (and will hang) where there's no human at a terminal, so the wrapper detects those cases and skips the auth check. It treats the environment as non-interactive when any of the following is true:
+
+- **stdin is not a TTY** — the universal signal for any non-interactive runner.
+- `CLAUDE_CODE` is set (Claude Code).
+- `CI` is set (respected by virtually every CI/CD platform).
+- `CURSOR_TRACE_ID` or `CURSOR_AGENT` is set (Cursor).
+- `GITHUB_ACTIONS` or `CODESPACES` is set (GitHub Actions / Codespaces).
 
 ## How it detects "expired"
 
@@ -45,7 +58,7 @@ npm's auth-related error codes are well-defined:
 | `EAUTHUNKNOWN`  | Registry returned an unrecognized auth state. |
 | `EAUTHIP`       | Token present but IP not allowed.            |
 
-The wrapper matches those codes in the stderr of `npm whoami`. Anything else (DNS, timeouts, 5xx) is treated as "can't tell" and passed through without a login prompt.
+The wrapper matches those codes in the stderr of `npm whoami`, plus a textual fallback for phrases like "Unauthorized", "authentication token", and "log in" that some registries return without a machine-readable code. Anything else (DNS, timeouts, 5xx) is treated as "can't tell" and passed through without a login prompt.
 
 ## Exit codes
 
