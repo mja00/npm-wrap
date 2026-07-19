@@ -2,7 +2,7 @@
 
 A thin CLI wrapper around `npm` that runs `npm login` first — but only when your current npm token is actually missing or expired.
 
-Once auth is sorted, the wrapper prefers `npm ci`: when a lockfile (`package-lock.json` or `npm-shrinkwrap.json`) is present and you aren't adding a specific package, it runs `npm ci` so dependencies come straight from the lockfile instead of being re-resolved. It falls back to `npm install` when there's no lockfile or when you pass package names (which `npm ci` doesn't support).
+Once auth is sorted, the wrapper prefers `npm ci`: when a lockfile (`package-lock.json` or `npm-shrinkwrap.json`) is present and you aren't adding a specific package, it runs `npm ci` so dependencies come straight from the lockfile instead of being re-resolved. It falls back to `npm install` when there's no lockfile or when you pass package names (which `npm ci` doesn't support). Set `NPM_WRAP_NO_CI` to force `npm install` even with a lockfile — handy for repeated local installs, since `npm ci` wipes `node_modules` and reinstalls from scratch each run.
 
 If you're already authenticated, it just forwards straight to the install. If the registry is unreachable (DNS failure, 5xx, etc.), it prints a warning and still proceeds rather than falsely prompting you to log in.
 
@@ -109,6 +109,10 @@ An interactive `npm login` is pointless (and will hang) where there's no human a
 - `CI` is set (respected by virtually every CI/CD platform).
 - `CURSOR_TRACE_ID` or `CURSOR_AGENT` is set (Cursor).
 - `GITHUB_ACTIONS` or `CODESPACES` is set (GitHub Actions / Codespaces).
+
+## Environment variables
+
+- `NPM_WRAP_NO_CI` — when set to any non-empty value, forces `npm install` even when a lockfile is present, opting out of the default `npm ci`.
 
 ## How it detects "expired"
 

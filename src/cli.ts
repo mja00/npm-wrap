@@ -48,12 +48,14 @@ function parseArgs(argv: string[]): { forward: string[] } {
 /**
  * Prefer `npm ci` so installs come straight from the lockfile instead of
  * re-resolving versions. It can't add packages or run without a lockfile,
- * so fall back to `npm install` for those cases.
+ * so fall back to `npm install` for those cases. `NPM_WRAP_NO_CI` opts out
+ * for callers who want `npm install`'s faster incremental behavior.
  */
 function chooseInstall(forward: string[]): { cmd: "ci" | "install"; args: string[] } {
   const hasLockfile = existsSync("package-lock.json") || existsSync("npm-shrinkwrap.json");
   const addsPackages = forward.some((arg) => !arg.startsWith("-"));
-  if (hasLockfile && !addsPackages) return { cmd: "ci", args: ["ci", ...forward] };
+  const optedOut = Boolean(process.env["NPM_WRAP_NO_CI"]);
+  if (hasLockfile && !addsPackages && !optedOut) return { cmd: "ci", args: ["ci", ...forward] };
   return { cmd: "install", args: ["install", ...forward] };
 }
 
