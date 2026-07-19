@@ -37,6 +37,67 @@ On each invocation the wrapper:
    - **Other error** (network, registry down) — warns and proceeds to `npm install` anyway, so an offline machine isn't forced through a pointless login prompt.
 4. Runs `npm install <your args>` with inherited stdio and exits with its exit code.
 
+## Intercepting `npm install`
+
+If you'd rather not remember to type `npm-wrap`, shadow `npm` in your shell so that only `install` (and its `i`/`add` aliases) is routed through the wrapper — every other npm subcommand (`run`, `test`, `ci`, `publish`, …) falls through to the real `npm` untouched.
+
+This is safe from infinite recursion: `npm-wrap` spawns the `npm` **binary** directly (via a `PATH` lookup, not your shell), so it never re-enters the shell function or alias below.
+
+### Zsh / Bash
+
+Add to `~/.zshrc` or `~/.bashrc`:
+
+```sh
+npm() {
+  case "$1" in
+    install | i | add)
+      shift
+      npm-wrap "$@"
+      ;;
+    *)
+      command npm "$@"
+      ;;
+  esac
+}
+```
+
+`command npm` bypasses the function to reach the real binary.
+
+### Fish
+
+Add to `~/.config/fish/functions/npm.fish` (or run the body once and `funcsave npm`):
+
+```fish
+function npm
+    if contains -- $argv[1] install i add
+        npm-wrap $argv[2..-1]
+    else
+        command npm $argv
+    end
+end
+```
+
+### PowerShell (Windows)
+
+Add to your profile (`notepad $PROFILE`):
+
+```powershell
+function npm {
+    # -CommandType Application resolves the real npm executable, skipping this function.
+    $realNpm = Get-Command npm -CommandType Application | Select-Object -First 1
+    if ($args.Count -gt 0 -and $args[0] -in @('install', 'i', 'add')) {
+        $rest = if ($args.Count -gt 1) { $args[1..($args.Count - 1)] } else { @() }
+        npm-wrap @rest
+    } else {
+        & $realNpm @args
+    }
+}
+```
+
+The same function works in PowerShell 7+ on macOS/Linux.
+
+After editing any of the above, restart your shell (or `source` the file) for it to take effect.
+
 ## Non-interactive detection
 
 An interactive `npm login` is pointless (and will hang) where there's no human at a terminal, so the wrapper detects those cases and skips the auth check. It treats the environment as non-interactive when any of the following is true:
